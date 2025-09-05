@@ -35,5 +35,16 @@ def update_user(name):
     user[name] = {"age": age}
     return jsonify({"message": "User updated successfully", "user": user[name]}), 200
 
+@app.route('/users', methods=['DELETE'])
+def delete_user():
+    name=request.args.get("name")
+    if not name:
+        return jsonify({"error": "Name parameter is required"}), 400
+    elif name in user:
+        del user[name]
+        return jsonify({"message": "User deleted successfully", "user": user}), 200
+    else:
+        return jsonify({"error": f"User {name} not found"}), 404
+
 if __name__ == "__main__":
     app.run(debug=True)

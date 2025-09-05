@@ -3,7 +3,7 @@ import requests
 for i in range(5):
     try:
         response = requests.get("https://official-joke-api.appspot.com/random_joke")
-        if(response.status_code != 200):
+        if response.status_code != 200:
             print("Failed to retrieve a joke")
             continue
         joke = response.json()
