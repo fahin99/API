@@ -16,13 +16,33 @@ else:
 def save_data():
     with open(DATA_FILE, 'w') as f:
         json.dump(user, f, indent=4)
+        
+def validate_user(name, age):
+    if not name or not name.strip():
+        return {"error": "Name cannot be empty"}, 400
+    if not age:
+        return {"error": "Age must be taken input"}, 400
+    try:
+        age = int(age)
+        if age <= 0:
+            return {"error": "Age must be a positive integer"}, 400
+    except ValueError:
+        return {"error": "Age must be a valid integer"}, 400
+    
+    return None, age
+        
+def validate_name(name):
+    if not name or not name.strip():
+        return {"error": "Name cannot be empty"}, 400
+    return None
 
 @app.route('/users', methods=["POST"])
 def users():
     name=request.form.get("name") or (request.json and request.json.get("name"))
     age=request.form.get("age") or (request.json and request.json.get("age"))
-    if not name or not age:
-        return jsonify({"error": "Name and age are required"}), 400
+    error, age = validate_user(name, age)
+    if error:
+        return jsonify(error), 400
     elif name in user:
         return jsonify({"error": f"User {name} already exists"}), 400
     user[name] = {"age": age}
@@ -45,8 +65,9 @@ def update_user(name):
     if name not in user:
         return jsonify({"error": f"User {name} not found"}), 404
     age = request.json.get("age")
-    if not age:
-        return jsonify({"error": "Age is required"}), 400
+    error, age = validate_user(name, age)
+    if error:
+        return jsonify(error), 400
     user[name] = {"age": age}
     save_data()
     if request.is_json or request.headers.get('Accept') == 'application/json':
@@ -64,6 +85,9 @@ def update_user(name):
 #addition: deleting user
 @app.route('/users/<name>', methods=['DELETE'])
 def delete_user(name):
+    error=validate_name(name)
+    if error:
+        return jsonify(error), 400
     if name not in user:
         return jsonify({"error": f"User {name} not found"}), 404
     del user[name]
@@ -77,6 +101,10 @@ def delete_user(name):
 
 @app.route('/users/all', methods=['GET'])
 def get_all_users():
+    error=validate_name(name)
+    if error:
+        return jsonify(error), 400
+    
     if request.is_json or request.headers.get('Accept') == 'application/json':
         return jsonify(user), 200
     html ="<h2>All Users</h2><ul>"
