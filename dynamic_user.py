@@ -101,17 +101,58 @@ def delete_user(name):
 
 @app.route('/users/all', methods=['GET'])
 def get_all_users():
-    error=validate_name(name)
-    if error:
-        return jsonify(error), 400
-    
     if request.is_json or request.headers.get('Accept') == 'application/json':
         return jsonify(user), 200
-    html ="<h2>All Users</h2><ul>"
+    html = "<h2>All Users</h2><ul>"
     for name, info in user.items():
         html += f"<li>{name}: Age: {info['age']}</li>"
     html += "</ul>"
     return html
+
+#addition: get a user
+@app.route('/users/<name>', methods=['GET'])
+def get_user(name):
+    error=validate_name(name)
+    if error:
+        return jsonify(error), 400
+    if name not in user:
+        return jsonify({"error": f"User {name} not found"}), 404
+    if request.is_json or request.headers.get('Accept') == 'application/json':
+        return jsonify(user[name]), 200
+    return f"""
+        <h2>User {name}</h2>
+        <p>Age: {user[name]['age']}</p>
+        <a href="/users/all">View All Users</a>
+    """, 200
+    
+@app.route('/search', methods=['GET'])
+def search_form():
+    return """
+        <h2>Search for a user</h2>
+        <form action="/search/result" method="get">
+            <label for="name">Enter name:</label>
+            <input type="text" id="name" name="name">
+            <input type="submit" value="Search">
+        </form>
+        <a href="/users/all">View All Users</a>
+    """
+@app.route('/search/result', methods=['GET'])
+def search_result():
+    name = request.args.get("name")
+    error = validate_name(name)
+    if error:
+        return jsonify(error), 400
+
+    if name not in user:
+        return f"<h2>User {name} not found</h2><a href='/search'>Search again</a>", 404
+    
+    return f"""
+        <h2>User {name}</h2>
+        <p>Age: {user[name]['age']}</p>
+        <a href="/search">Search again</a> |
+        <a href="/users/all">View All Users</a>
+    """
+
 
 if __name__ == "__main__":
     app.run(debug=True)

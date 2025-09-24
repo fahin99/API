@@ -17,12 +17,6 @@ while running:
         response_put=requests.put(f"{url}/{name}", json={"age": age}, headers=headers)
         print("Put response: ", response_put.json())
 
-    elif act=="get":
-        # retrieve a new user
-        name=input("Enter name: ")
-        response_get=requests.get(url,params={"name":name}, headers=headers)
-        print("Get response: ", response_get.json())
-
     elif act=="delete":
         name=input("Enter name: ")
         #delete a new user
