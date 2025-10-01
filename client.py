@@ -1,7 +1,16 @@
 import requests
+token=None
 url="http://127.0.0.1:5000/users"
 headers = {"Content-Type": "application/json", "Accept": "application/json"}
 running=True
+def login(username, password):
+    global token
+    res=requests.post(f"{url}/login",json={"username":username,"password":password}, headers=headers)
+    data=res.json()
+    print("Login response: ", data)
+    if data.get("status")=="success":
+        token=data.get("token")
+        headers["Authorization"]=f"Bearer {token}"
 while running:
     act=input("What do you want to do: ")
     if act=="create":
@@ -29,7 +38,11 @@ while running:
         print("List response: ")
         for name, info in response_list.json().items():
             print(f"Name: {name}, Age: {info['age']}")
-        
+    elif act=="get":
+        name=input("Enter name: ")
+        #get a user
+        response_get=requests.get(f"{url}/{name}", headers=headers)
+        print("Get response: ", response_get.json())
     elif act=="exit":
         running=False
 

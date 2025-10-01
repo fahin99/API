@@ -1,7 +1,9 @@
 from flask import Flask, jsonify, request
 import json, os
+import secrets
 
 app = Flask(__name__)
+active_tokens={} #token -> username
 
 DATA_FILE = 'users.json'
 if os.path.exists(DATA_FILE):
@@ -153,6 +155,22 @@ def search_result():
         <a href="/users/all">View All Users</a>
     """
 
+@app.route("/login", methods=["POST"])
+def login():
+    data=request.json
+    username=data.get("username")
+    password=data.get("password")
+    
+    if not username or not password:
+        return {"status": "failed", "message": "Username and password are required"}, 400
+    elif username in user and user[username]==password:
+        token=secrets.token_hex(16)
+        active_tokens[token]=username
+
+        return {"status": "success", "message": "Login successful", "token":token}
+    
+    else:
+        return {"status": "failed", "message": "Invalid username or password"}, 401
 
 if __name__ == "__main__":
     app.run(debug=True)
