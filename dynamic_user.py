@@ -107,8 +107,24 @@ def get_all_users():
         return jsonify(user), 200
     html = "<h2>All Users</h2><ul>"
     for name, info in user.items():
-        html += f"<li>{name}: Age: {info['age']}</li>"
-    html += "</ul>"
+        html += f"""
+        <li>
+            {name}: Age {info['age']}
+            <!-- Delete Form -->
+            <form action="/users/{name}" method="post" style="display:inline;">
+                <input type="hidden" name="_method" value="DELETE">
+                <input type="submit" value="Delete">
+            </form>
+
+            <!-- Update Form -->
+            <form action="/users/{name}" method="post" style="display:inline;">
+                <input type="hidden" name="_method" value="PUT">
+                <input type="number" name="age" placeholder="New Age">
+                <input type="submit" value="Update">
+            </form>
+        </li>
+        """
+    html += "</ul><a href='/users'>Create New User</a>"
     return html
 
 #addition: get a user
@@ -157,20 +173,33 @@ def search_result():
 
 @app.route("/login", methods=["POST"])
 def login():
-    data=request.json
-    username=data.get("username")
-    password=data.get("password")
-    
+    username = request.form.get("username") or (request.json and request.json.get("username"))
+    password = request.form.get("password") or (request.json and request.json.get("password"))
+    age= request.form.get("age") or (request.json and request.json.get("age"))
     if not username or not password:
-        return {"status": "failed", "message": "Username and password are required"}, 400
-    elif username in user and user[username]==password:
-        token=secrets.token_hex(16)
-        active_tokens[token]=username
+        return jsonify({"error": "Username and password are required"}), 400
+    elif username in user and user[username].get("age") == int(age):
+        token = f"token-{username}"
+        if request.is_json or request.headers.get('Accept') == 'application/json':
+            return jsonify({"token": token}), 200
+        return f"<h2>Welcome {username}!</h2><p>Your token: {token}</p><a href='/secret?token={token}'>Go to Secret</a>"
+    return jsonify({"error": "Invalid username or password"}), 401
 
-        return {"status": "success", "message": "Login successful", "token":token}
+
+@app.route("/secret",methods=['GET'])
+def secret():
+    auth_header=request.headers.get("Authorization")
+    if not auth_header:
+        return {"status":"failed", "message":"missing token"}, 401
     
+    if auth_header.startswith("Bearer "):
+        token=auth_header[len("Bearer "):]
     else:
-        return {"status": "failed", "message": "Invalid username or password"}, 401
-
+        token=auth_header
+    if token in active_tokens:
+        return {"status":"success", "message":f"Hello, {active_tokens[token]}! This is a secret message."}
+    else:
+        return {"status":"failed", "message":"Unauthorized"}, 401
+    
 if __name__ == "__main__":
     app.run(debug=True)

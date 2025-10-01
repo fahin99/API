@@ -1,16 +1,22 @@
 import requests
 token=None
-url="http://127.0.0.1:5000/users"
+BASE_URL="http://127.0.0.1:5000"
+url=f"{BASE_URL}/users"
 headers = {"Content-Type": "application/json", "Accept": "application/json"}
 running=True
-def login(username, password):
+def login():
     global token
-    res=requests.post(f"{url}/login",json={"username":username,"password":password}, headers=headers)
+    username=input("Enter username: ")
+    password=input("Enter password: ")
+    res=requests.post(f"{BASE_URL}/login",json={"username":username,"password":password}, headers=headers)
     data=res.json()
     print("Login response: ", data)
     if data.get("status")=="success":
         token=data.get("token")
         headers["Authorization"]=f"Bearer {token}"
+    else:
+        print("Login failed")
+        token=None
 while running:
     act=input("What do you want to do: ")
     if act=="create":
@@ -45,6 +51,11 @@ while running:
         print("Get response: ", response_get.json())
     elif act=="exit":
         running=False
+    elif act == "secret":
+        response_secret = requests.get("http://127.0.0.1:5000/secret", headers=headers)
+        print("Secret response:", response_secret.json())
+    elif act=="login":
+        login()
 
     else:
         print("Please enter a valid action")
