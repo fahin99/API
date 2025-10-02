@@ -1,9 +1,11 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 import json, os
 import secrets
 
 app = Flask(__name__)
 active_tokens={} #token -> username
+app.secret_key='supersecretkey'
 
 DATA_FILE = 'users.json'
 if os.path.exists(DATA_FILE):
@@ -181,14 +183,24 @@ def search_result():
 def login():
     username = request.form.get("username") or (request.json and request.json.get("username"))
     password = request.form.get("password") or (request.json and request.json.get("password"))
+
     if not username or not password:
         return jsonify({"error": "Username and password are required"}), 400
-    elif username in user and user[username].get("password") == password:
-        token = f"token-{username}"
-        if request.is_json or request.headers.get('Accept') == 'application/json':
-            return jsonify({"token": token}), 200
-        return f"<h2>Welcome {username}!</h2><p>Your token: {token}</p><a href='/secret?token={token}'>Go to Secret</a>"
+
+    if username in user:
+        # generate token
+        stored_pw=user[username].get("password")
+        if stored_pw and check_password_hash(stored_pw, password):
+            token = secrets.token_hex(16)  # random unique token
+            active_tokens[token] = username  # store in dictionary
+
+            if request.is_json or request.headers.get('Accept') == 'application/json':
+                return redirect(url_for('dashboard', token=token))
+
+            return f"<h2>Welcome {username}!</h2><p>Your token: {token}</p><a href='/secret?token={token}'>Go to Secret</a>"
+
     return jsonify({"error": "Invalid username or password"}), 401
+
 
 @app.route("/login", methods=["GET"])
 def login_form():
@@ -200,6 +212,7 @@ def login_form():
             <label for="password">Password:</label>
             <input type="password" id="password" name="password"><br><br>
             <input type="submit" value="Login">
+            <p><a href="/signup">New here? Signup</a></p>
         </form>
     """
 @app.route("/secret",methods=['GET'])
@@ -217,5 +230,54 @@ def secret():
     else:
         return {"status":"failed", "message":"Unauthorized"}, 401
     
+@app.route("/signup", methods=["POST"])
+def signup():
+    username = request.form.get("username") or (request.json and request.json.get("username"))
+    password = request.form.get("password") or (request.json and request.json.get("password"))
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+    if username in user:
+        return jsonify({"error": "Username already exists"}), 400
+    hashed_password = generate_password_hash(password)
+    user[username] = {"age": None, "password": hashed_password}
+    save_data()
+    return jsonify({"message": "User created successfully"}), 201  
+    
+@app.route('/signup', methods=['GET'])
+def signup_form():
+    return """
+        <h2> Signup</h2>
+        <form action="/signup" method="post">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username"><br><br>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password"><br><br>
+            <input type="submit" value="Signup">
+        </form>
+        <a href="/login">Already have an account? Login here</a>
+    """
+
+@app.route("/dashboard")
+def dashboard():
+    token=request.args.get("token")
+    if token in active_tokens:
+        username=active_tokens[token]
+        return f"""
+            <h2>Welcome to your dashboard, {username}!</h2>
+            <p>This is a protected area.</p>
+            <a href="/secret?token={token}">Go to Secret</a><br>
+            <a href="/users/all">View All Users</a><br>
+            <a href="/logout?token={token}">Logout</a>
+        """
+    return redirect(url_for('login_form'))
+
+@app.route("/logout")
+def logout():
+    token=request.args.get("token")
+    if token in active_tokens:
+        del active_tokens[token]
+        return redirect(url_for('login_form'))
+    return redirect(url_for('dashboard'))
+        
 if __name__ == "__main__":
     app.run(debug=True)

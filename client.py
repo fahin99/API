@@ -11,12 +11,21 @@ def login():
     res=requests.post(f"{BASE_URL}/login",json={"username":username,"password":password}, headers=headers)
     data=res.json()
     print("Login response: ", data)
-    if data.get("status")=="success":
+    if data.get("token"):
         token=data.get("token")
         headers["Authorization"]=f"token-{token}"
     else:
         print("Login failed")
         token=None
+        
+def signup():
+    username=input("Enter username: ")
+    password=input("Enter password: ")
+    res=requests.post(f"{BASE_URL}/signup",json={"username":username,"password":password}, headers=headers)
+    data=res.json()
+    print("Signup response: ", data)
+    
+    
 while running:
     act=input("What do you want to do: ")
     if act=="create":
