@@ -14,6 +14,12 @@ if os.path.exists(DATA_FILE):
             user = {}
 else:
     user = {}
+    
+def override_http_method():
+    if request.method=="POST":
+        method=request.form.get("_method")
+        if method:
+            request.environ["REQUEST_METHOD"]=method.upper()
 
 def save_data():
     with open(DATA_FILE, 'w') as f:
@@ -175,27 +181,37 @@ def search_result():
 def login():
     username = request.form.get("username") or (request.json and request.json.get("username"))
     password = request.form.get("password") or (request.json and request.json.get("password"))
-    age= request.form.get("age") or (request.json and request.json.get("age"))
     if not username or not password:
         return jsonify({"error": "Username and password are required"}), 400
-    elif username in user and user[username].get("age") == int(age):
+    elif username in user and user[username].get("password") == password:
         token = f"token-{username}"
         if request.is_json or request.headers.get('Accept') == 'application/json':
             return jsonify({"token": token}), 200
         return f"<h2>Welcome {username}!</h2><p>Your token: {token}</p><a href='/secret?token={token}'>Go to Secret</a>"
     return jsonify({"error": "Invalid username or password"}), 401
 
-
+@app.route("/login", methods=["GET"])
+def login_form():
+    return """
+        <h2> Login</h2>
+        <form action="/login" method="post">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username"><br><br>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password"><br><br>
+            <input type="submit" value="Login">
+        </form>
+    """
 @app.route("/secret",methods=['GET'])
 def secret():
-    auth_header=request.headers.get("Authorization")
+    auth_header=request.headers.get("Authorization") or request.args.get("token")
     if not auth_header:
         return {"status":"failed", "message":"missing token"}, 401
-    
-    if auth_header.startswith("Bearer "):
-        token=auth_header[len("Bearer "):]
+
+    if auth_header.startswith("token-"):
+        token=auth_header[len("token-"):]
     else:
-        token=auth_header
+        return {"status":"failed", "message":"Invalid token format"}, 401
     if token in active_tokens:
         return {"status":"success", "message":f"Hello, {active_tokens[token]}! This is a secret message."}
     else:

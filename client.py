@@ -13,7 +13,7 @@ def login():
     print("Login response: ", data)
     if data.get("status")=="success":
         token=data.get("token")
-        headers["Authorization"]=f"Bearer {token}"
+        headers["Authorization"]=f"token-{token}"
     else:
         print("Login failed")
         token=None
